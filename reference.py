@@ -87,6 +87,7 @@ def parse_agrs():
     # Others
     parser.add_argument('--seed', type=int, default=9233, help='.')
     parser.add_argument('--resume', type=str, help='whether to resume the training from existing checkpoints.')
+    parser.add_argument('--language', type=str, default='English',help='which language to inference')
 
     args = parser.parse_args()
     return args
@@ -168,160 +169,161 @@ def greedy_decoder(model, report, reports_ids, start_symbol):
 
 
 
-#验证集
+#英文英文英文英文
 #model.eval()
 model_en.eval()
 model_ch.eval()
-with torch.no_grad():
-    result_report_val_english = []
-    result_report_val_chinese = []
-    val_gts_english, val_gts_chinese = [], []
-    val_res_english, val_res_chinese = [], []
-    ground_truths_eng, ground_truths_cn = [], []
+if args.language=='English' or args.language=='All':
+    with torch.no_grad():
+        result_report_val_english = []
+        val_gts_english = []
+        val_res_english= []
+        ground_truths_eng= []
 
-    for batch_idx, (images_id, images, reports_ids, report, image_path_all, reports_ids_use) in enumerate(
-            val_dataloader):
-        images, reports_ids, reports_ids_use = images.to(device), reports_ids.to(
-            device), reports_ids_use.to(device)
+        for batch_idx, (images_id, images, reports_ids, report, image_path_all, reports_ids_use) in enumerate(
+                val_dataloader):
+            images, reports_ids, reports_ids_use = images.to(device), reports_ids.to(
+                device), reports_ids_use.to(device)
 
-        for i in range(len(images_id)):
-            # print(456,reports_ids[i][0])
-            if reports_ids[i][0]==1:
-                greedy_dec_input = greedy_decoder(model_en, image_path_all[i],  reports_ids[i], start_symbol=1)
-                predict = model_en(image_path_all[i], greedy_dec_input)
-                predict = predict.data.max(1, keepdim=True)[1]
+            for i in range(len(images_id)):
+                # print(456,reports_ids[i][0])
+                if reports_ids[i][0]==1:
+                    greedy_dec_input = greedy_decoder(model_en, image_path_all[i],  reports_ids[i], start_symbol=1)
+                    predict = model_en(image_path_all[i], greedy_dec_input)
+                    predict = predict.data.max(1, keepdim=True)[1]
 
-                # predict = predict.data.max(1, keepdim=True)[1]
-                predict = predict.squeeze()
-                reports = model_en.tokenizer.decode(predict.cpu().numpy())
-                temp = {'reports_ids': images_id[i], 'reports': reports, 'label': 'english'}
-                result_report_val_english.append(temp)
-                val_res_english.append(reports)
-                gtt = model_en.tokenizer.decode(reports_ids[i][1:].cpu().numpy())
-                ground_truths_eng.append(gtt)
+                    # predict = predict.data.max(1, keepdim=True)[1]
+                    predict = predict.squeeze()
+                    reports = model_en.tokenizer.decode(predict.cpu().numpy())
+                    temp = {'reports_ids': images_id[i], 'reports': reports, 'label': 'english'}
+                    result_report_val_english.append(temp)
+                    val_res_english.append(reports)
+                    gtt = model_en.tokenizer.decode(reports_ids[i][1:].cpu().numpy())
+                    ground_truths_eng.append(gtt)
 
-                val_gts_english = ground_truths_eng
+                    val_gts_english = ground_truths_eng
 
-    val_met_english = metric_ftns({i: [gt] for i, gt in enumerate(val_gts_english)},
-                                  {i: [re] for i, re in enumerate(val_res_english)})
+        val_met_english = metric_ftns({i: [gt] for i, gt in enumerate(val_gts_english)},
+                                      {i: [re] for i, re in enumerate(val_res_english)})
 
-    for key, value in val_met_english.items():
-        print('val_english' +key,value)
-    resFiletest = 'valreports/english-' + '.json'
-    json.dump(result_report_val_english, open(resFiletest, 'w'))
+        for key, value in val_met_english.items():
+            print('val_english' +key,value)
+        resFiletest = 'valreports/english-' + '.json'
+        json.dump(result_report_val_english, open(resFiletest, 'w'))
 
+        result_report_test_english = []
+        test_gts_english, test_res_english = [], []
+        ground_truths_eng = []
 
+        for batch_idx, (images_id, images, reports_ids, report, image_path_all, reports_ids_use) in enumerate(
+                test_dataloader):
+            images, reports_ids, reports_ids_use = images.to(device), reports_ids.to(
+                device), reports_ids_use.to(device)
 
+            for i in range(len(images_id)):
+                if reports_ids[i][0] == 1:
+                    greedy_dec_input = greedy_decoder(model_en, image_path_all[i], reports_ids[i], start_symbol=1)
+                    predict = model_en(image_path_all[i], greedy_dec_input)
+                    predict = predict.data.max(1, keepdim=True)[1]
 
+                    predict = predict.squeeze()
+                    reports = model_en.tokenizer.decode(predict.cpu().numpy())
+                    temp = {'reports_ids': images_id[i], 'reports': reports, 'label': 'english'}
+                    result_report_test_english.append(temp)
+                    test_res_english.append(reports)
+                    gtt2 = model_en.tokenizer.decode(reports_ids[i][1:].cpu().numpy())
+                    ground_truths_eng.append(gtt2)
 
-    for batch_idx, (images_id, images, reports_ids, report, image_path_all, reports_ids_use) in enumerate(
-            val_dataloader):
-        images, reports_ids, reports_ids_use = images.to(device), reports_ids.to(
-            device), reports_ids_use.to(device)
+                    test_gts_english = ground_truths_eng
 
-        for i in range(len(images_id)):
-            if reports_ids[i][0] == 2:
-                greedy_dec_input = greedy_decoder(model_ch, image_path_all[i], reports_ids[i], start_symbol=2)
-                predict = model_ch(image_path_all[i], greedy_dec_input)
-                predict = predict.data.max(1, keepdim=True)[1]
+        test_met_english = metric_ftns({i: [gt] for i, gt in enumerate(test_gts_english)},
+                                       {i: [re] for i, re in enumerate(test_res_english)})
 
-                predict = predict.squeeze()
-                reports = model_ch.tokenizer.decode(predict.cpu().numpy())
-                reports = reports.replace(" ", "")
-                temp = {'reports_ids': images_id[i], 'reports': reports, 'label': 'chinese'}
-                result_report_val_chinese.append(temp)
-                reports = ' '.join(reports)
-                val_res_chinese.append(reports)
-                gtt1 = model_ch.tokenizer.decode(reports_ids[i][1:].cpu().numpy())
-                gtt1 = gtt1.replace(" ", "")
-                gtt1 = ' '.join(gtt1)
-                ground_truths_cn.append(gtt1)
+        for key, value in test_met_english.items():
+            print('test_english' + key, value)
 
-                val_gts_chinese = ground_truths_cn
+        resFiletest_eng = 'testreports/english-' + '.json'
+        json.dump(result_report_test_english, open(resFiletest_eng, 'w'))
 
-    val_met_chinese = metric_ftns({i: [gt] for i, gt in enumerate(val_gts_chinese)},
-                                       {i: [re] for i, re in enumerate(val_res_chinese)})
-    #log.update(**{'val_chinese' + k: v for k, v in val_met_chinese.items()})
-    for key, value in val_met_chinese.items():
-        print('val_chinese' + key, value)
-    resFiletest = 'valreports/chinese-' + '.json'
-    json.dump(result_report_val_chinese, open(resFiletest, 'w', encoding='utf-8'), ensure_ascii=False)
-
-
-
-
-#测试集
-#model.eval()
+# 中文中文中文中文中文
+# model.eval()
 model_en.eval()
 model_ch.eval()
-with torch.no_grad():
-    result_report_test_english = []
-    result_report_test_chinese = []
-    test_gts_english, test_gts_chinese, test_res_english, test_res_chinese = [], [], [], []
-    ground_truths_eng, ground_truths_cn = [], []
+if args.language=='Chinese' or args.language=='All':
+    with torch.no_grad():
+        result_report_val_chinese = []
+        val_gts_chinese = []
+        val_res_chinese = []
+        ground_truths_cn = []
+        for batch_idx, (images_id, images, reports_ids, report, image_path_all, reports_ids_use) in enumerate(
+                val_dataloader):
+            images, reports_ids, reports_ids_use = images.to(device), reports_ids.to(
+                device), reports_ids_use.to(device)
 
-    for batch_idx, (images_id, images, reports_ids, report, image_path_all, reports_ids_use) in enumerate(
-            test_dataloader):
-        images, reports_ids, reports_ids_use = images.to(device), reports_ids.to(
-            device), reports_ids_use.to(device)
+            for i in range(len(images_id)):
+                if reports_ids[i][0] == 2:
+                    greedy_dec_input = greedy_decoder(model_ch, image_path_all[i], reports_ids[i], start_symbol=2)
+                    predict = model_ch(image_path_all[i], greedy_dec_input)
+                    predict = predict.data.max(1, keepdim=True)[1]
 
-        for i in range(len(images_id)):
-            if reports_ids[i][0] == 1:
-                greedy_dec_input = greedy_decoder(model_en, image_path_all[i], reports_ids[i], start_symbol=1)
-                predict = model_en(image_path_all[i], greedy_dec_input)
-                predict = predict.data.max(1, keepdim=True)[1]
+                    predict = predict.squeeze()
+                    reports = model_ch.tokenizer.decode(predict.cpu().numpy())
+                    reports = reports.replace(" ", "")
+                    temp = {'reports_ids': images_id[i], 'reports': reports, 'label': 'chinese'}
+                    result_report_val_chinese.append(temp)
+                    reports = ' '.join(reports)
+                    val_res_chinese.append(reports)
+                    gtt1 = model_ch.tokenizer.decode(reports_ids[i][1:].cpu().numpy())
+                    gtt1 = gtt1.replace(" ", "")
+                    gtt1 = ' '.join(gtt1)
+                    ground_truths_cn.append(gtt1)
 
-                predict = predict.squeeze()
-                reports = model_en.tokenizer.decode(predict.cpu().numpy())
-                temp = {'reports_ids': images_id[i], 'reports': reports, 'label': 'english'}
-                result_report_test_english.append(temp)
-                test_res_english.append(reports)
-                gtt2 = model_en.tokenizer.decode(reports_ids[i][1:].cpu().numpy())
-                ground_truths_eng.append(gtt2)
+                    val_gts_chinese = ground_truths_cn
 
-                test_gts_english = ground_truths_eng
-
-    test_met_english = metric_ftns({i: [gt] for i, gt in enumerate(test_gts_english)},
-                                   {i: [re] for i, re in enumerate(test_res_english)})
-
-    for key, value in test_met_english.items():
-        print('test_english' + key, value)
-
-    resFiletest_eng = 'testreports/english-' + '.json'
-    json.dump(result_report_test_english, open(resFiletest_eng, 'w'))
+        val_met_chinese = metric_ftns({i: [gt] for i, gt in enumerate(val_gts_chinese)},
+                                           {i: [re] for i, re in enumerate(val_res_chinese)})
+        #log.update(**{'val_chinese' + k: v for k, v in val_met_chinese.items()})
+        for key, value in val_met_chinese.items():
+            print('val_chinese' + key, value)
+        resFiletest = 'valreports/chinese-' + '.json'
+        json.dump(result_report_val_chinese, open(resFiletest, 'w', encoding='utf-8'), ensure_ascii=False)
 
 
-    for batch_idx, (images_id, images, reports_ids, report, image_path_all, reports_ids_use) in enumerate(
-            test_dataloader):
-        images, reports_ids, reports_ids_use = images.to(device), reports_ids.to(
-            device), reports_ids_use.to(device)
 
-        for i in range(len(images_id)):
-            if reports_ids[i][0] == 2:
-                greedy_dec_input = greedy_decoder(model_ch, image_path_all[i], reports_ids[i], start_symbol=2)
-                predict = model_ch(image_path_all[i], greedy_dec_input)
-                predict = predict.data.max(1, keepdim=True)[1]
+        result_report_test_chinese = []
+        test_gts_chinese,  test_res_chinese = [], []
+        ground_truths_cn = []
+        for batch_idx, (images_id, images, reports_ids, report, image_path_all, reports_ids_use) in enumerate(
+                test_dataloader):
+            images, reports_ids, reports_ids_use = images.to(device), reports_ids.to(
+                device), reports_ids_use.to(device)
 
-                predict = predict.squeeze()
-                reports = model_ch.tokenizer.decode(predict.cpu().numpy())
-                reports = reports.replace(" ", "")
-                temp = {'reports_ids': images_id[i], 'reports': reports, 'label': 'chinese'}
-                result_report_test_chinese.append(temp)
-                reports = ' '.join(reports)
-                test_res_chinese.append(reports)
-                gtt3 = model_ch.tokenizer.decode(reports_ids[i][1:].cpu().numpy())
-                gtt3 = gtt3.replace(" ", "")
-                gtt3 = ' '.join(gtt3)
-                ground_truths_cn.append(gtt3)
+            for i in range(len(images_id)):
+                if reports_ids[i][0] == 2:
+                    greedy_dec_input = greedy_decoder(model_ch, image_path_all[i], reports_ids[i], start_symbol=2)
+                    predict = model_ch(image_path_all[i], greedy_dec_input)
+                    predict = predict.data.max(1, keepdim=True)[1]
 
-                test_gts_chinese = ground_truths_cn
+                    predict = predict.squeeze()
+                    reports = model_ch.tokenizer.decode(predict.cpu().numpy())
+                    reports = reports.replace(" ", "")
+                    temp = {'reports_ids': images_id[i], 'reports': reports, 'label': 'chinese'}
+                    result_report_test_chinese.append(temp)
+                    reports = ' '.join(reports)
+                    test_res_chinese.append(reports)
+                    gtt3 = model_ch.tokenizer.decode(reports_ids[i][1:].cpu().numpy())
+                    gtt3 = gtt3.replace(" ", "")
+                    gtt3 = ' '.join(gtt3)
+                    ground_truths_cn.append(gtt3)
 
-    test_met_chinese = metric_ftns({i: [gt] for i, gt in enumerate(test_gts_chinese)},
-                                        {i: [re] for i, re in enumerate(test_res_chinese)})
+                    test_gts_chinese = ground_truths_cn
 
-    for key, value in test_met_chinese.items():
-        print('test_chinese' + key, value)
+        test_met_chinese = metric_ftns({i: [gt] for i, gt in enumerate(test_gts_chinese)},
+                                            {i: [re] for i, re in enumerate(test_res_chinese)})
 
-    resFiletest = 'testreports/chinese-' + '.json'
-    json.dump(result_report_test_chinese, open(resFiletest, 'w', encoding='utf-8'), ensure_ascii=False)
+        for key, value in test_met_chinese.items():
+            print('test_chinese' + key, value)
+
+        resFiletest = 'testreports/chinese-' + '.json'
+        json.dump(result_report_test_chinese, open(resFiletest, 'w', encoding='utf-8'), ensure_ascii=False)
 
